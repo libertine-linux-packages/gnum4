@@ -1,0 +1,212 @@
+# This file is part of libertine linux's package gnum4. It is subject to the license terms in the COPYRIGHT file found in the top-level directory of this distribution and at https://raw.githubusercontent.com/libertine-linux-packages/gnum4/master/COPYRIGHT. No part of libertine linux's package gnum4, including this file, may be copied, modified, propagated, or distributed except according to the terms contained in the COPYRIGHT file.
+# Copyright © 2016 The developers of libertine linux's package gnum4. See the COPYRIGHT file in the top-level directory of this distribution and at https://raw.githubusercontent.com/libertine-linux-packages/gnum4/master/COPYRIGHT.
+
+
+variant=upstream
+
+_libertine_gnum4_packageVersion='1.4.17'
+
+case "$package" in
+	
+	build_gnum4)
+		
+		build_provides m4 gm4 gnum4
+		
+		build_needs cc ar ranlib
+		libertine_compile_build_gnum4()
+		{
+			#_libertine_compile_gnulib_internal "$(libertine_public_outputBuildSysrootPath)" false cc ar ranlib
+			_libertine_compile_gnum4_internal "$(libertine_public_outputBuildSysrootPath)" "$(libertine_public_outputBuildSysrootPath)" "$libertine_build" false cc
+		}
+		
+	;;
+	
+	gnum4)
+		depends busybox
+				
+		depends build_ccache
+		build_needs ccache
+		
+		depends build_musl_cross_make_host
+		build_needs "$libertine_host"-cc "$libertine_host"-strip
+		libertine_compile_gnum4()
+		{
+			_libertine_compile_gnum4_internal "$(libertine_public_outputInitramfsPath)" '' "$libertine_host" true "$libertine_host"-cc $(libertine_public_hostCCompilerFlags)
+		}
+		
+	;;
+	
+esac
+
+depends build_gnuconfig
+
+depends build_gnulib
+
+build_needs mkdir mkdir ln sed mv cat cp
+_libertine_compile_gnum4_internal()
+{
+	local outputFolderPath="$1"
+	local installedRootFolderPath="$2"
+	local host="$3"
+	local shouldStrip="$4"
+	local compiler="$5"
+	shift 5
+	
+	local outputBinFolderPath="$outputFolderPath"/usr/bin
+	mkdir -m 0755 -p "$outputBinFolderPath"
+	
+	libertine_public_autoconf_installConfigHHeader
+	
+	# Override
+	libertine_public_autoconf_configHHeaderRedefine PACKAGE_STRING "GNU m4 $_libertine_gnum4_packageVersion" true
+	libertine_public_autoconf_configHHeaderRedefine PACKAGE_VERSION "$_libertine_gnum4_packageVersion" true
+	libertine_public_autoconf_configHHeaderRedefine _FILE_OFFSET_BITS 64 false
+		
+	pushd "$(libertine_public_sourcePath)"
+		
+		libertine_public_autoconf_replaceWithKnownVersionOfGnulib "$(libertine_public_sourcePath)"/gnulib
+		libertine_public_autoconf_replaceWithKnownVersionOfBootstrap "$(libertine_public_sourcePath)"
+		
+		mkdir -m 0755 -p build-aux
+		ln -s ../gnulib build-aux/gnulib
+		
+		# close-stream.c can instead use stdio_ext.h on musl for __fpending
+		sed -i -e 's;#include "fpending.h";#include <stdio_ext.h>;g' build-aux/gnulib/lib/close-stream.c
+		
+		# irritating
+		sed -i -e 's; #error "Please include config.h first.";#include <config.h>;g' \
+			build-aux/gnulib/lib/xalloc.h \
+			build-aux/gnulib/lib/binary-io.h \
+			build-aux/gnulib/lib/gl_xlist.h
+		
+		# ?obstack_printf bug?
+		cat >build-aux/gnulib/lib/obstack_printf.h <<-'EOF'
+			#ifndef _OBSTACK_PRINTF_H
+			# define _OBSTACK_PRINTF_H 1
+			# include <stdarg.h>
+			# include "obstack.h"
+			int obstack_printf (struct obstack *obs, const char *format, ...);
+			int obstack_vprintf (struct obstack *obs, const char *format, va_list args);
+			#endif
+		EOF
+		sed -i -e 's;#include "obstack.h";#include "obstack_printf.h";g' \
+			build-aux/gnulib/lib/obstack_printf.c
+				
+		cat >configmake.h <<-EOF
+			#define PREFIX "${installedRootFolderPath}/usr"
+			#define EXEC_PREFIX "${installedRootFolderPath}/usr"
+			#define BINDIR "${installedRootFolderPath}/usr/bin"
+			#define SBINDIR "${installedRootFolderPath}/usr/sbin"
+			#define LIBEXECDIR "${installedRootFolderPath}/usr/libexec"
+			#define DATAROOTDIR "${installedRootFolderPath}/usr/share"
+			#define DATADIR "${installedRootFolderPath}/usr/share"
+			#define SYSCONFDIR "${installedRootFolderPath}/etc"
+			#define SHAREDSTATEDIR "${installedRootFolderPath}/var"
+			#define LOCALSTATEDIR "${installedRootFolderPath}/etc"
+			#define RUNSTATEDIR "${installedRootFolderPath}/var/run"
+			#define INCLUDEDIR "${installedRootFolderPath}/usr/include"
+			#define OLDINCLUDEDIR "${installedRootFolderPath}/usr/include"
+			#define DOCDIR "${installedRootFolderPath}/usr/share/m4/doc"
+			#define INFODIR "${installedRootFolderPath}/usr/share/m4/info"
+			#define HTMLDIR "${installedRootFolderPath}/usr/share/m4/doc/html"
+			#define DVIDIR "${installedRootFolderPath}/usr/share/m4/doc/dvi"
+			#define PDFDIR "${installedRootFolderPath}/usr/share/m4/doc/pdf"
+			#define PSDIR "${installedRootFolderPath}/usr/share/m4/doc/ps"
+			#define LIBDIR "${installedRootFolderPath}/usr/lib"
+			#define LISPDIR "${installedRootFolderPath}/usr/lib"
+			#define LOCALEDIR "${installedRootFolderPath}/usr/share/locale"
+			#define MANDIR "${installedRootFolderPath}/usr/share/man"
+			#define MANEXTDIR "${installedRootFolderPath}/usr/share/man"
+			#define PKGDATADIR "${installedRootFolderPath}/usr/share/m4/data"
+			#define PKGINCLUDEDIR "${installedRootFolderPath}/usr/share/m4/include"
+			#define PKGLIBDIR "${installedRootFolderPath}/usr/share/m4/lib"
+			#define PKGLIBEXECDIR "${installedRootFolderPath}/usr/share/m4/libexec"
+		EOF
+
+		mkdir -m 0755 -p src/gnulib
+		
+		cp build-aux/gnulib/build-aux/snippet/c++defs.h src/gnulib
+		
+		if $shouldStrip; then
+			local shellPath=M4_SYSCMD_SHELL='/bin/sh'
+		else
+			local shellPath="$(libertine_public_PATH)"/sh
+		fi
+		set -- "$@" -x c --std=gnu99 -I. -I./src -I./src/gnulib -DHAVE_CONFIG_H -D_GNU_SOURCE -DM4_SYSCMD_SHELL='"'"$shellPath"'"' -DSYSCMD_SHELL='"'"$shellPath"'"'
+				
+		local gnuLibFile
+		for gnuLibFile in \
+			stdlib--.h stdlib-safer.h mkstemp-safer.c \
+			stdio--.h stdio-safer.h \
+			unistd--.h unistd-safer.h dup-safer.c pipe-safer.c fd-safer.c \
+			obstack.h obstack.c obstack_printf.h obstack_printf.c vasnprintf.h vasnprintf.c printf-parse.h printf-parse.c printf-args.h printf-args.c xsize.h xsize.c \
+			xvasprintf.h xvasprintf.c xasprintf.c \
+			error.h error.c \
+			xalloc.h xalloc-oversized.h xalloc-die.c \
+			xprintf.h xprintf.c exitfail.h exitfail.c gettext.h \
+			xstrndup.h xstrndup.c \
+			cloexec.h cloexec.c \
+			quote.h quotearg.h quotearg.c c-strcaseeq.h localcharset.h localcharset.c c-strcase.h c-strcasecmp.c c-strncasecmp.c c-ctype.h c-ctype.c \
+			xmemdup0.h xmemdup0.c \
+			close-stream.h close-stream.c \
+			bitrotate.h bitrotate.c \
+			freadptr.h \
+			freadseek.h freadseek.c freadahead.h stdio-impl.h \
+			memchr2.h memchr2.c \
+			xalloc.h xmalloca.h xmalloca.c malloca.h malloca.c xmalloc.c xstrtoul.c xstrtol-error.c xstrtol.c xstrtol.h intprops.h \
+			version-etc-fsf.c version-etc.c version-etc.h \
+			binary-io.h binary-io.c verify.h \
+			verror.h verror.c \
+			dirname.h dirname-lgpl.c dosname.h basename-lgpl.c \
+			clean-temp.h clean-temp.c fatal-signal.h fatal-signal.c sig-handler.h sig-handler.c pathmax.h tmpdir.h tmpdir.c secure_getenv.c \
+			filenamecat.h filenamecat.c filenamecat-lgpl.c \
+			gl_avltree_oset.h gl_avltree_oset.c gl_oset.h gl_oset.c gl_anytree_oset.h \
+			gl_xoset.h gl_xoset.c \
+			gl_xlist.h gl_xlist.c gl_list.h gl_list.c gl_linkedhash_list.h gl_linkedhash_list.c gl_anyhash_list1.h gl_anylinked_list1.h gl_anyhash_list2.h gl_anylinked_list2.h \
+			closein.h closein.c closeout.h closeout.c \
+			propername.h propername.c trim.h trim.c mbchar.h mbchar.c mbiter.h mbiter.c mbuiter.h mbuiter.c strnlen1.h strnlen1.c xstriconv.h xstriconv.c striconv.h striconv.c mbsstr.c str-kmp.h mbslen.c \
+			spawn-pipe.h spawn-pipe.c wait-process.h wait-process.c \
+			execute.h execute.c \
+			memcmp2.h memcmp2.c \
+			tempname.h tempname.c \
+			progname.h progname.c \
+			regex.h regex.c regexec.c regcomp.c regex_internal.h regex_internal.c \
+			c-stack.h c-stack.c ignore-value.h
+		do
+			
+			cp build-aux/gnulib/lib/"$gnuLibFile" src/gnulib
+			
+			case "$gnuLibFile" in
+				
+				# Fragments, included via regex.c
+				regexec.c|regcomp.c|regex_internal.c)
+					continue
+				;;
+				
+				*.c)
+					set -- "$@" src/gnulib/"$gnuLibFile"
+				;;
+				
+			esac
+			
+		done
+		
+		# Added in later gnulib versions for xstrtoul et al
+		if [ -f build-aux/gnulib/lib/assure.h ]; then
+			cp build-aux/gnulib/lib/assure.h src/gnulib
+		fi
+		
+		
+		set -- "$@" src/m4.c src/builtin.c src/debug.c src/eval.c src/format.c src/freeze.c src/input.c src/macro.c src/output.c src/path.c src/symtab.c
+				
+		"$compiler" "$@" -o "$outputBinFolderPath"/m4
+		
+		ln -s m4 "$outputBinFolderPath"/gm4
+		ln -s m4 "$outputBinFolderPath"/gnum4
+				
+		if $shouldStrip; then
+			"$libertine_host"-strip "$outputBinFolderPath"/m4
+		fi
+		
+	popd
+}
