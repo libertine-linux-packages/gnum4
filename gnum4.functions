@@ -130,7 +130,7 @@ _libertine_compile_gnum4_internal()
 		if $shouldStrip; then
 			local shellPath=M4_SYSCMD_SHELL='/bin/sh'
 		else
-			local shellPath="$(libertine_public_PATH)"/sh
+			local shellPath="$(libertine_public_buildNeedsPath)"/sh
 		fi
 		set -- "$@" -x c --std=gnu99 -I. -I./src -I./src/gnulib -DHAVE_CONFIG_H -D_GNU_SOURCE -DM4_SYSCMD_SHELL='"'"$shellPath"'"' -DSYSCMD_SHELL='"'"$shellPath"'"'
 				
