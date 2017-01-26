@@ -205,7 +205,7 @@ _libertine_compile_gnum4_internal()
 		ln -s m4 "$outputBinFolderPath"/gnum4
 				
 		if $shouldStrip; then
-			"$libertine_host"-strip "$outputBinFolderPath"/m4
+			libertine_public_stripAndSecureBinary "$outputBinFolderPath"/m4
 		fi
 		
 	popd
