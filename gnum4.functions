@@ -4,6 +4,8 @@
 
 variant=upstream
 
+depends build_busybox
+
 _libertine_gnum4_packageVersion='1.4.17'
 
 case "$package" in
