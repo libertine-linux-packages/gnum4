@@ -1,3 +1,8 @@
+Updating origin
+https://github.com/libertine-linux-mirrors/m4
+Branch 'master' set up to track remote branch 'master' from 'origin'.
 [submodule "upstream"]
 	path = upstream
-	url = git://git.savannah.gnu.org/m4.git
+	url = https://github.com/libertine-linux-mirrors/m4.git
+	branch = master
+	libertine-linux-upstream = git://git.savannah.gnu.org/m4.git
