@@ -6,6 +6,8 @@ variant=upstream
 
 depends build_busybox
 
+depends build_automake
+
 _libertine_gnum4_packageVersion='1.4.17'
 
 case "$package" in
@@ -47,8 +49,6 @@ esac
 
 depends build_gnuconfig
 
-depends build_gnulib
-
 build_needs mkdir mkdir ln sed mv cat cp
 _libertine_compile_gnum4_internal()
 {
@@ -71,8 +71,8 @@ _libertine_compile_gnum4_internal()
 		
 	pushd "$(libertine_public_sourcePath)"
 		
-		libertine_public_autoconf_replaceWithKnownVersionOfGnulib "$(libertine_public_sourcePath)"/gnulib
-		libertine_public_autoconf_replaceWithKnownVersionOfBootstrap "$(libertine_public_sourcePath)"
+		libertine_public_autoconf_adjustGnulib "$(libertine_public_sourcePath)"/gnulib
+		libertine_public_autoconf_adjustGnulibBootstrap "$(libertine_public_sourcePath)"
 		
 		mkdir -m 0755 -p build-aux
 		ln -s ../gnulib build-aux/gnulib
